@@ -9,7 +9,6 @@ import logging
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import text
-from config.db import engine
 
 
 logging.basicConfig(
@@ -21,7 +20,7 @@ log = logging.getLogger(__name__)
 
 # 1. EXTRACT
 def extract():
-    log.info("📥 EXTRACT — pulling source tables...")
+    log.info("EXTRACT: pulling source tables...")
 
     policies     = pd.read_sql("SELECT * FROM policies",        engine)
     customers    = pd.read_sql("SELECT customer_id, county FROM dim_customer", engine)
@@ -42,7 +41,7 @@ def extract():
 # 2. VALIDATE (before transform)
 # -----------------------------
 def validate_source(policies, customers):
-    log.info("🔍 VALIDATE — checking source data quality...")
+    log.info("VALIDATE: checking source data quality...")
 
     issues = []
 
@@ -69,9 +68,9 @@ def validate_source(policies, customers):
 
     if issues:
         for issue in issues:
-            log.warning(f"  ⚠️  {issue}")
+            log.warning(f"  {issue}")
     else:
-        log.info("  ✅ All source validations passed")
+        log.info("  All source validations passed")
 
     return issues
 
@@ -80,7 +79,7 @@ def validate_source(policies, customers):
 # 3. TRANSFORM
 # -----------------------------
 def transform(policies, customers, policy_types, counties, agents):
-    log.info("🔧 TRANSFORM — building fact_sales structure...")
+    log.info("TRANSFORM: building fact_sales structure...")
 
     df = policies.copy()
 
@@ -109,10 +108,10 @@ def transform(policies, customers, policy_types, counties, agents):
     # Generate missing columns
     agent_ids = agents["agent_id"].tolist()
 
-    df["sale_id"]         = [str(uuid.uuid4()) for _ in range(len(df))]   # ✅ PK
-    df["agent_id"]        = [random.choice(agent_ids) for _ in range(len(df))]  # ✅ assign agent
-    df["date_key"]        = df["start_date"]                               # ✅ time dimension
-    df["commission_rate"] = [round(random.uniform(0.05, 0.15), 4) for _ in range(len(df))]  # ✅ required
+    df["sale_id"]         = [str(uuid.uuid4()) for _ in range(len(df))]
+    df["agent_id"]        = [random.choice(agent_ids) for _ in range(len(df))]
+    df["date_key"]        = df["start_date"]
+    df["commission_rate"] = [round(random.uniform(0.05, 0.15), 4) for _ in range(len(df))]
 
     # Select and rename to match fact_sales schema exactly
     fact_sales = df[[
@@ -155,7 +154,7 @@ def transform(policies, customers, policy_types, counties, agents):
 # 4. DEDUPLICATE
 # -----------------------------
 def deduplicate(fact_sales):
-    log.info("🔍 DEDUPLICATE — checking for existing records...")
+    log.info("DEDUPLICATE: checking for existing records...")
 
     try:
         existing = pd.read_sql(
@@ -179,28 +178,28 @@ def deduplicate(fact_sales):
 # -----------------------------
 def load(fact_sales):
     if len(fact_sales) == 0:
-        log.info("ℹ️  No new rows to insert — skipping load")
+        log.info("No new rows to insert — skipping load")
         return
 
-    log.info(f"📤 LOAD — inserting {len(fact_sales):,} rows into fact_sales...")
+    log.info(f"LOAD: inserting {len(fact_sales):,} rows into fact_sales...")
 
     fact_sales.to_sql(
         "fact_sales",
         engine,
         if_exists="append",
         index=False,
-        chunksize=100,     # ✅ safe (not 500)
-        method=None        # ✅ no "multi" — avoids param overflow
+        chunksize=100,
+        method=None
     )
 
-    log.info("  ✅ Load complete")
+    log.info("  Load complete")
 
 
 # -----------------------------
 # 6. VERIFY (post-load)
 # -----------------------------
 def verify():
-    log.info("📊 VERIFY — post-load checks...")
+    log.info("VERIFY: post-load checks...")
 
     with engine.connect() as conn:
         total    = conn.execute(text("SELECT COUNT(*) FROM fact_sales")).scalar()
@@ -223,9 +222,9 @@ def verify():
     log.info(f"\n{by_type.to_string(index=False)}")
 
     if nulls == 0 and orphans == 0:
-        log.info("  ✅ All post-load checks passed")
+        log.info("  All post-load checks passed")
     else:
-        log.warning("  ⚠️  Post-load issues found — investigate above")
+        log.warning("  Post-load issues found — investigate above")
 
 
 # -----------------------------
@@ -234,7 +233,7 @@ def verify():
 if __name__ == "__main__":
     start_time = datetime.now()
     log.info("=" * 55)
-    log.info("🚀 fact_sales ETL PIPELINE STARTED")
+    log.info("fact_sales ETL PIPELINE STARTED")
     log.info("=" * 55)
 
     try:
@@ -248,9 +247,9 @@ if __name__ == "__main__":
 
         duration = (datetime.now() - start_time).seconds
         log.info("=" * 55)
-        log.info(f"🎉 PIPELINE COMPLETE in {duration}s")
+        log.info(f"PIPELINE COMPLETE in {duration}s")
         log.info("=" * 55)
 
     except Exception as e:
-        log.error(f"❌ PIPELINE FAILED: {e}")
+        log.error(f"PIPELINE FAILED: {e}")
         raise

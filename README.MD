@@ -75,7 +75,7 @@ insurance-data-platform/
 │   ├── 08_load_fact_sales.py        # Populates fact_sales
 │   ├── 09_load_fact_claims.py       # Populates fact_claims
 │   ├── etl_fact_payments.py         # ETL pipeline for fact_payments
-│   ├── 07_analytics.py              # Analytics & 10 chart generation
+│   ├── 11_analytics.py              # Analytics & 10 chart generation
 │   ├── 10_kafka_producer.py         # Real-time event producer
 │   └── 10_kafka_consumer.py         # Real-time event consumer → PostgreSQL
 │
@@ -136,7 +136,7 @@ python scripts/07_populate_star_schema.py
 python scripts/08_load_fact_sales.py
 python scripts/09_load_fact_claims.py
 python scripts/etl_fact_payments.py
-python scripts/07_analytics.py
+python scripts/11_analytics.py
 ```
 
 ### 5. Start Kafka (Docker)

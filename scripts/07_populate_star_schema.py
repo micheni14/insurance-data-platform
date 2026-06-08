@@ -14,7 +14,7 @@ from faker import Faker
 load_dotenv()
 fake = Faker()
 
-print("🚀 Starting Star Schema ingestion pipeline...")
+print("Starting star schema ingestion pipeline...")
 
 engine = create_engine(
     f"postgresql+psycopg2://{os.getenv('DB_USER')}:{quote_plus(os.getenv('DB_PASSWORD'))}"
@@ -24,14 +24,14 @@ engine = create_engine(
 
 with engine.connect() as conn:
     conn.execute(text("SELECT 1"))
-print("✅ Connected to PostgreSQL!\n")
+print("Connected to PostgreSQL\n")
 
 
 # ============================================================
 # DIMENSION 1: dim_date
 # Populate every date from 2019-01-01 to 2030-12-31
 # ============================================================
-print("📅 Populating dim_date...")
+print("Populating dim_date...")
 
 start = date(2019, 1, 1)
 end   = date(2030, 12, 31)
@@ -62,21 +62,21 @@ df_date = pd.DataFrame(dates)
 try:
     existing = pd.read_sql("SELECT date_key FROM dim_date", engine)
     df_date  = df_date[~df_date["date_key"].isin(existing["date_key"])]
-except:
-    pass
+except Exception as e:
+    print(f"WARNING: Could not read existing dim_date records: {e}")
 
 if len(df_date) > 0:
     df_date.to_sql("dim_date", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"✅ dim_date loaded: {len(df_date)} rows")
+    print(f"dim_date loaded: {len(df_date)} rows")
 else:
-    print("ℹ️  dim_date already populated")
+    print("dim_date already populated")
 
 
 # ============================================================
 # DIMENSION 2: dim_customer
 # Copy & enrich from existing customers table
 # ============================================================
-print("\n👤 Populating dim_customer...")
+print("\nPopulating dim_customer...")
 
 customers = pd.read_sql("SELECT * FROM customers", engine)
 
@@ -119,30 +119,30 @@ dim_customer = customers[[
 try:
     existing = pd.read_sql("SELECT customer_id FROM dim_customer", engine)
     dim_customer = dim_customer[~dim_customer["customer_id"].astype(str).isin(existing["customer_id"].astype(str))]
-except:
-    pass
+except Exception as e:
+    print(f"WARNING: Could not read existing dim_customer records: {e}")
 
 if len(dim_customer) > 0:
     dim_customer.to_sql("dim_customer", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"✅ dim_customer loaded: {len(dim_customer)} rows")
+    print(f"dim_customer loaded: {len(dim_customer)} rows")
 else:
-    print("ℹ️  dim_customer already populated")
+    print("dim_customer already populated")
 
 
 # ============================================================
 # DIMENSION 3: dim_agent
 # Generate 20 fake agents
 # ============================================================
-print("\n🧑‍💼 Populating dim_agent...")
+print("\nPopulating dim_agent...")
 
 try:
     existing_agents = pd.read_sql("SELECT COUNT(*) as cnt FROM dim_agent", engine)
     if existing_agents["cnt"].iloc[0] > 0:
-        print("ℹ️  dim_agent already populated")
+        print("dim_agent already populated")
         agents_df = pd.read_sql("SELECT agent_id FROM dim_agent", engine)
     else:
-        raise Exception("empty")
-except:
+        raise RuntimeError("dim_agent table is empty — seeding now")
+except Exception as e:
     channels = ["Direct", "Broker", "Online", "Bancassurance"]
     regions  = ["Nairobi Metro", "Central", "Coast", "Rift Valley", "Nyanza"]
 
@@ -160,14 +160,14 @@ except:
 
     agents_df = pd.DataFrame(agents)
     agents_df.to_sql("dim_agent", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"✅ dim_agent loaded: {len(agents_df)} rows")
+    print(f"dim_agent loaded: {len(agents_df)} rows")
 
 
 # ============================================================
 # FACT TABLE 1: fact_sales
 # One row per policy — links to all dimensions
 # ============================================================
-print("\n💰 Populating fact_sales...")
+print("\nPopulating fact_sales...")
 
 policies     = pd.read_sql("SELECT * FROM policies", engine)
 policy_types = pd.read_sql("SELECT policy_type_id, policy_type FROM dim_policy_type", engine)
@@ -211,21 +211,21 @@ df_sales = pd.DataFrame(fact_sales_rows)
 try:
     existing = pd.read_sql("SELECT sale_id FROM fact_sales", engine)
     df_sales = df_sales[~df_sales["sale_id"].isin(existing["sale_id"])]
-except:
-    pass
+except Exception as e:
+    print(f"WARNING: Could not read existing fact_sales records: {e}")
 
 if len(df_sales) > 0:
     df_sales.to_sql("fact_sales", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"✅ fact_sales loaded: {len(df_sales)} rows")
+    print(f"fact_sales loaded: {len(df_sales)} rows")
 else:
-    print("ℹ️  fact_sales already populated")
+    print("fact_sales already populated")
 
 
 # ============================================================
 # FACT TABLE 2: fact_claims
 # Generate 1-2 claims per policy (not all policies have claims)
 # ============================================================
-print("\n🏥 Populating fact_claims...")
+print("\nPopulating fact_claims...")
 
 claim_types   = ["Medical", "Accident", "Death", "Disability", "Property Damage"]
 claim_statuses = pd.read_sql("SELECT status_id, status_name FROM dim_claim_status", engine)
@@ -277,21 +277,48 @@ df_claims = pd.DataFrame(claims)
 try:
     existing = pd.read_sql("SELECT claim_id FROM fact_claims", engine)
     df_claims = df_claims[~df_claims["claim_id"].isin(existing["claim_id"])]
-except:
-    pass
+except Exception as e:
+    print(f"WARNING: Could not read existing fact_claims records: {e}")
 
 if len(df_claims) > 0:
     df_claims.to_sql("fact_claims", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"✅ fact_claims loaded: {len(df_claims)} rows")
+    print(f"fact_claims loaded: {len(df_claims)} rows")
 else:
-    print("ℹ️  fact_claims already populated")
+    print("fact_claims already populated")
+
+
+# ============================================================
+# VIEW: summary_stats
+# Used by 11_analytics.py — SELECT * FROM summary_stats
+# ============================================================
+print("\nCreating summary_stats view...")
+
+with engine.connect() as conn:
+    conn.execute(text("""
+        CREATE OR REPLACE VIEW summary_stats AS
+        SELECT 'Total Customers'       AS metric, COUNT(*)::text AS value FROM customers
+        UNION ALL
+        SELECT 'Total Policies',        COUNT(*)::text            FROM policies
+        UNION ALL
+        SELECT 'Total Claims',          COUNT(*)::text            FROM claims
+        UNION ALL
+        SELECT 'Gross Premium (KES)',   ROUND(SUM(premium_amount), 2)::text
+            FROM fact_sales
+        UNION ALL
+        SELECT 'Total Collected (KES)', ROUND(SUM(payment_amount), 2)::text
+            FROM fact_payments
+            WHERE payment_status = 'Completed'
+    """))
+    conn.commit()
+
+print("summary_stats view created")
 
 
 # ============================================================
 # VERIFICATION — Full schema summary
 # ============================================================
 print("\n" + "="*55)
-print("📊 STAR SCHEMA — FINAL VERIFICATION")
+print("STAR SCHEMA — FINAL VERIFICATION")
 print("="*55)
 
 tables = [
@@ -303,9 +330,9 @@ tables = [
 with engine.connect() as conn:
     for table in tables:
         count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
-        tag   = "📐 DIM" if table.startswith("dim") else "📊 FACT"
+        tag   = "DIM " if table.startswith("dim") else "FACT"
         print(f"  {tag}  {table:<25} {count:>6} rows")
 
 print("="*55)
-print("\n🎉 Star schema fully loaded and verified!")
-print("✅ Ready for Phase 3 — SQL Analytics & Views")
+print("\nStar schema fully loaded and verified.")
+print("Ready for analytics.")

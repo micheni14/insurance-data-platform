@@ -79,19 +79,19 @@ def kes(x, pos):
         return f"KES {x/1_000:.0f}K"
     return f"KES {x:.0f}"
 
-print("🚀 Insurance Analytics Platform — Phase 7")
+print("Insurance Analytics Platform")
 print("=" * 55)
 
 # ============================================================
 # EXTRACT ALL DATA
 # ============================================================
-print("📥 Loading data from PostgreSQL...")
+print("Loading data from PostgreSQL...")
 
 monthly_premium = pd.read_sql("""
     SELECT
         d.year, d.month, d.month_name,
         ROUND(SUM(fs.premium_amount), 2)   AS premium,
-        ROUND(SUM(fs.commission_amount),2) AS commission,
+        ROUND(SUM(fs.commission_rate * fs.premium_amount),2) AS commission,
         COUNT(fs.sale_id)                  AS policies
     FROM fact_sales fs
     JOIN dim_date d ON fs.date_key = d.date_key
@@ -154,7 +154,7 @@ agent_perf = pd.read_sql("""
         da.channel,
         COUNT(fs.sale_id)                   AS policies,
         ROUND(SUM(fs.premium_amount), 2)    AS total_premium,
-        ROUND(SUM(fs.commission_amount), 2) AS commission
+        ROUND(SUM(fs.commission_rate * fs.premium_amount), 2) AS commission
     FROM fact_sales fs
     JOIN dim_agent da ON fs.agent_id::text = da.agent_id::text
     GROUP BY da.agent_id, da.agent_name, da.channel
@@ -214,7 +214,7 @@ collections_vs_premium = pd.read_sql("""
 
 summary = pd.read_sql("SELECT * FROM summary_stats", engine)
 
-print("✅ Data loaded successfully!")
+print("Data loaded successfully")
 print(f"   Monthly records  : {len(monthly_premium)}")
 print(f"   Counties         : {len(county_premium)}")
 print(f"   Claim statuses   : {len(claims_status)}")
@@ -223,7 +223,7 @@ print(f"   Agents           : {len(agent_perf)}")
 # ============================================================
 # CHART 1: MONTHLY PREMIUM TREND (Line)
 # ============================================================
-print("\n📊 Building Chart 1: Monthly Premium Trend...")
+print("\nBuilding Chart 1: Monthly Premium Trend...")
 
 fig, ax = plt.subplots(figsize=(14, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -260,13 +260,13 @@ ax.grid(True, axis="y")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/01_monthly_premium_trend.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 01_monthly_premium_trend.png")
+print("   Saved: 01_monthly_premium_trend.png")
 
 
 # ============================================================
 # CHART 2: PREMIUM BY COUNTY (Horizontal Bar)
 # ============================================================
-print("📊 Building Chart 2: Premium by County...")
+print("Building Chart 2: Premium by County...")
 
 fig, ax = plt.subplots(figsize=(10, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -293,13 +293,13 @@ ax.grid(True, axis="x")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/02_premium_by_county.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 02_premium_by_county.png")
+print("   Saved: 02_premium_by_county.png")
 
 
 # ============================================================
 # CHART 3: POLICY TYPE DISTRIBUTION (Donut)
 # ============================================================
-print("📊 Building Chart 3: Policy Type Distribution...")
+print("Building Chart 3: Policy Type Distribution...")
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -342,13 +342,13 @@ for bar, val in zip(bars, policy_type_dist["total_premium"]):
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/03_policy_type_distribution.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 03_policy_type_distribution.png")
+print("   Saved: 03_policy_type_distribution.png")
 
 
 # ============================================================
 # CHART 4: CLAIMS BY STATUS (Grouped Bar)
 # ============================================================
-print("📊 Building Chart 4: Claims by Status...")
+print("Building Chart 4: Claims by Status...")
 
 fig, ax = plt.subplots(figsize=(11, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -371,13 +371,13 @@ ax.grid(True, axis="y")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/04_claims_by_status.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 04_claims_by_status.png")
+print("   Saved: 04_claims_by_status.png")
 
 
 # ============================================================
 # CHART 5: LOSS RATIO BY POLICY TYPE (Bar with threshold line)
 # ============================================================
-print("📊 Building Chart 5: Loss Ratio...")
+print("Building Chart 5: Loss Ratio...")
 
 fig, ax = plt.subplots(figsize=(9, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -414,13 +414,13 @@ ax.grid(True, axis="y")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/05_loss_ratio.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 05_loss_ratio.png")
+print("   Saved: 05_loss_ratio.png")
 
 
 # ============================================================
 # CHART 6: AGENT PERFORMANCE LEADERBOARD
 # ============================================================
-print("📊 Building Chart 6: Agent Performance...")
+print("Building Chart 6: Agent Performance...")
 
 fig, ax = plt.subplots(figsize=(12, 6))
 fig.patch.set_facecolor("#0f1117")
@@ -460,13 +460,13 @@ ax.grid(True, axis="x")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/06_agent_performance.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 06_agent_performance.png")
+print("   Saved: 06_agent_performance.png")
 
 
 # ============================================================
 # CHART 7: PAYMENT METHOD BREAKDOWN (Donut)
 # ============================================================
-print("📊 Building Chart 7: Payment Methods...")
+print("Building Chart 7: Payment Methods...")
 
 fig, ax = plt.subplots(figsize=(8, 6))
 fig.patch.set_facecolor("#0f1117")
@@ -494,13 +494,13 @@ ax.set_title("Payment Collections by Method", fontweight="bold", pad=15)
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/07_payment_methods.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 07_payment_methods.png")
+print("   Saved: 07_payment_methods.png")
 
 
 # ============================================================
 # CHART 8: LATE PAYMENT RATE BY FREQUENCY
 # ============================================================
-print("📊 Building Chart 8: Late Payment Rates...")
+print("Building Chart 8: Late Payment Rates...")
 
 fig, ax = plt.subplots(figsize=(9, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -530,13 +530,13 @@ ax.grid(True, axis="y")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/08_late_payments.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 08_late_payments.png")
+print("   Saved: 08_late_payments.png")
 
 
 # ============================================================
 # CHART 9: CUSTOMER AGE BAND DISTRIBUTION
 # ============================================================
-print("📊 Building Chart 9: Customer Age Bands...")
+print("Building Chart 9: Customer Age Bands...")
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -559,13 +559,13 @@ ax2.grid(True, axis="y")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/09_age_band_analysis.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 09_age_band_analysis.png")
+print("   Saved: 09_age_band_analysis.png")
 
 
 # ============================================================
 # CHART 10: COLLECTIONS VS PREMIUM (Area Chart)
 # ============================================================
-print("📊 Building Chart 10: Collections vs Premium...")
+print("Building Chart 10: Collections vs Premium...")
 
 fig, ax = plt.subplots(figsize=(14, 5))
 fig.patch.set_facecolor("#0f1117")
@@ -592,13 +592,13 @@ ax.grid(True, axis="y")
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/10_collections_vs_premium.png", dpi=150, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 10_collections_vs_premium.png")
+print("   Saved: 10_collections_vs_premium.png")
 
 
 # ============================================================
 # DASHBOARD: All 10 charts in one image
 # ============================================================
-print("\n📊 Building Master Dashboard...")
+print("\nBuilding Master Dashboard...")
 
 fig = plt.figure(figsize=(24, 30))
 fig.patch.set_facecolor("#0f1117")
@@ -630,17 +630,17 @@ plt.tight_layout(rect=[0, 0, 1, 0.97])
 plt.savefig(f"{OUTPUT_DIR}/00_master_dashboard.png",
             dpi=120, bbox_inches="tight")
 plt.close()
-print("   ✅ Saved: 00_master_dashboard.png")
+print("   Saved: 00_master_dashboard.png")
 
 
 # ============================================================
 # PRINT SUMMARY STATS
 # ============================================================
 print("\n" + "=" * 55)
-print("📊 PLATFORM SUMMARY STATS")
+print("PLATFORM SUMMARY STATS")
 print("=" * 55)
 for _, row in summary.iterrows():
     print(f"  {row['metric']:<25} {row['value']}")
 print("=" * 55)
-print(f"\n✅ All charts saved to: {OUTPUT_DIR}/")
-print("🎉 Phase 7 Analytics Complete!")
+print(f"\nAll charts saved to: {OUTPUT_DIR}/")
+print("Analytics complete.")

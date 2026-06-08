@@ -1,36 +1,21 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
-from sqlalchemy import create_engine
 import random
 from datetime import datetime, timedelta
 import uuid
-import os
-from dotenv import load_dotenv
-from urllib.parse import quote_plus
+from config.db import engine
 
-
-load_dotenv()
-
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = quote_plus(os.getenv("DB_PASSWORD"))
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-
-
-engine = create_engine(
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-
-print("🚀 Connected to database")
-
+print("Connected to database")
 
 customers = pd.read_sql("SELECT customer_id FROM customers", engine)
 
 if customers.empty:
-    raise Exception("❌ No customers found. Load customers first.")
+    raise Exception("No customers found. Run 01_generate_customers.py first.")
 
-print(f"📊 Found {len(customers)} customers")
-
+print(f"Found {len(customers)} customers")
 
 policy_types = ["Life", "Health", "Auto", "Education"]
 
@@ -56,8 +41,7 @@ policies = [
 
 df = pd.DataFrame(policies)
 
-print(f"📊 Policies to insert: {len(df)}")
-
+print(f"Policies to insert: {len(df)}")
 
 df.to_sql(
     "policies",
@@ -68,4 +52,4 @@ df.to_sql(
     method="multi"
 )
 
-print("✅ Policies inserted successfully")
+print("Policies inserted successfully")
