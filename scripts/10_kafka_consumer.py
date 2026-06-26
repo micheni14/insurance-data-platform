@@ -7,7 +7,7 @@ and inserts them into PostgreSQL in real time.
 import json
 import os
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timezone, timezone
 from kafka import KafkaConsumer
 from dotenv import load_dotenv
 
@@ -15,7 +15,7 @@ load_dotenv()
 
 # ── Config ───────────────────────────────────────────────────────────────────
 TOPIC  = "insurance-events"
-BROKER = "localhost:9092"
+BROKER = "kafka:9092"
 GROUP  = "insurance-consumer-group"
 
 # ── DB Connection ─────────────────────────────────────────────────────────────
@@ -34,8 +34,8 @@ cur.execute("""
     CREATE TABLE IF NOT EXISTS kafka_events_log (
         id              SERIAL PRIMARY KEY,
         event_type      VARCHAR(50),
-        event_id        INTEGER,
-        policy_id       INTEGER,
+        event_id        VARCHAR(36),
+        policy_id       VARCHAR(36),
         amount          NUMERIC(15,2),
         extra_info      VARCHAR(100),
         event_timestamp TIMESTAMP,

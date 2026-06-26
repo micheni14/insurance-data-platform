@@ -1,18 +1,13 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
-from sqlalchemy import create_engine
 import uuid
 import random
 from datetime import datetime
-import os
-from dotenv import load_dotenv
-from urllib.parse import quote_plus
-
-load_dotenv()
-
-engine = create_engine(
-    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{quote_plus(os.getenv('DB_PASSWORD'))}"
-    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-)
+from config.db import engine
+from config.gcp import dump_df_to_gcs
 
 counties = ["Nairobi", "Kiambu", "Mombasa", "Nakuru", "Kisumu"]
 
@@ -31,5 +26,6 @@ for _ in range(50):
 
 df = pd.DataFrame(agents)
 
+dump_df_to_gcs(df, "agents")
 df.to_sql("agents", engine, if_exists="append", index=False, method="multi")
-print("✅ Agents loaded")
+print("Agents loaded")

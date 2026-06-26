@@ -1,0 +1,26 @@
+[2026-06-24T22:56:59.231+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2026-06-24T22:56:59.279+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: insurance_pipeline.generate_customers manual__2026-06-24T22:50:48+00:00 [queued]>
+[2026-06-24T22:56:59.291+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: insurance_pipeline.generate_customers manual__2026-06-24T22:50:48+00:00 [queued]>
+[2026-06-24T22:56:59.293+0000] {taskinstance.py:2303} INFO - Starting attempt 1 of 2
+[2026-06-24T22:56:59.310+0000] {taskinstance.py:2327} INFO - Executing <Task(PythonOperator): generate_customers> on 2026-06-24 22:50:48+00:00
+[2026-06-24T22:56:59.323+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'insurance_pipeline', 'generate_customers', 'manual__2026-06-24T22:50:48+00:00', '--job-id', '25', '--raw', '--subdir', 'DAGS_FOLDER/insurance_pipeline_dag.py', '--cfg-path', '/tmp/tmp8x_knopl']
+[2026-06-24T22:56:59.328+0000] {standard_task_runner.py:91} INFO - Job 25: Subtask generate_customers
+[2026-06-24T22:56:59.332+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:61 DeprecationWarning: This process (pid=588) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-24T22:56:59.333+0000] {standard_task_runner.py:63} INFO - Started process 589 to run task
+[2026-06-24T22:56:59.427+0000] {task_command.py:426} INFO - Running <TaskInstance: insurance_pipeline.generate_customers manual__2026-06-24T22:50:48+00:00 [running]> on host b726b1f95560
+[2026-06-24T22:56:59.563+0000] {taskinstance.py:2644} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='lewis' AIRFLOW_CTX_DAG_ID='insurance_pipeline' AIRFLOW_CTX_TASK_ID='generate_customers' AIRFLOW_CTX_EXECUTION_DATE='2026-06-24T22:50:48+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-24T22:50:48+00:00'
+[2026-06-24T22:56:59.564+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2026-06-24T22:56:59.580+0000] {logging_mixin.py:188} INFO - ▶ Running: /opt/***/scripts/01_generate_customers.py
+[2026-06-24T22:57:02.578+0000] {logging_mixin.py:188} INFO - Generating customers...
+DataFrame shape: (2000, 7)
+Checking existing customers...
+New records after dedup: 2000
+Loading into Postgres...
+Customers loaded successfully
+[2026-06-24T22:57:02.579+0000] {logging_mixin.py:188} INFO - ✅ 01_generate_customers.py completed successfully
+[2026-06-24T22:57:02.580+0000] {python.py:237} INFO - Done. Returned value was: None
+[2026-06-24T22:57:02.581+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2026-06-24T22:57:02.598+0000] {taskinstance.py:1205} INFO - Marking task as SUCCESS. dag_id=insurance_pipeline, task_id=generate_customers, execution_date=20260624T225048, start_date=20260624T225659, end_date=20260624T225702
+[2026-06-24T22:57:02.658+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 0
+[2026-06-24T22:57:02.699+0000] {taskinstance.py:3482} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-06-24T22:57:02.703+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

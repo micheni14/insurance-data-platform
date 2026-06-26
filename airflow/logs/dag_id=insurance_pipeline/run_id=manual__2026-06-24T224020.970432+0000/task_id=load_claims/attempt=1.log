@@ -1,0 +1,24 @@
+[2026-06-24T22:45:40.837+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2026-06-24T22:45:40.880+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: insurance_pipeline.load_claims manual__2026-06-24T22:40:20.970432+00:00 [queued]>
+[2026-06-24T22:45:40.892+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: insurance_pipeline.load_claims manual__2026-06-24T22:40:20.970432+00:00 [queued]>
+[2026-06-24T22:45:40.893+0000] {taskinstance.py:2303} INFO - Starting attempt 1 of 2
+[2026-06-24T22:45:40.914+0000] {taskinstance.py:2327} INFO - Executing <Task(PythonOperator): load_claims> on 2026-06-24 22:40:20.970432+00:00
+[2026-06-24T22:45:40.926+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'insurance_pipeline', 'load_claims', 'manual__2026-06-24T22:40:20.970432+00:00', '--job-id', '11', '--raw', '--subdir', 'DAGS_FOLDER/insurance_pipeline_dag.py', '--cfg-path', '/tmp/tmpbxe2cbe4']
+[2026-06-24T22:45:40.930+0000] {standard_task_runner.py:91} INFO - Job 11: Subtask load_claims
+[2026-06-24T22:45:40.930+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:61 DeprecationWarning: This process (pid=209) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-24T22:45:40.932+0000] {standard_task_runner.py:63} INFO - Started process 212 to run task
+[2026-06-24T22:45:41.022+0000] {task_command.py:426} INFO - Running <TaskInstance: insurance_pipeline.load_claims manual__2026-06-24T22:40:20.970432+00:00 [running]> on host b726b1f95560
+[2026-06-24T22:45:41.148+0000] {taskinstance.py:2644} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='lewis' AIRFLOW_CTX_DAG_ID='insurance_pipeline' AIRFLOW_CTX_TASK_ID='load_claims' AIRFLOW_CTX_EXECUTION_DATE='2026-06-24T22:40:20.970432+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-24T22:40:20.970432+00:00'
+[2026-06-24T22:45:41.150+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2026-06-24T22:45:41.166+0000] {logging_mixin.py:188} INFO - ▶ Running: /opt/***/scripts/03_load_claims.py
+[2026-06-24T22:45:44.056+0000] {logging_mixin.py:188} INFO - Connected to DB
+Found 6000 policies
+Generated 2430 claims
+Claims loaded successfully
+[2026-06-24T22:45:44.057+0000] {logging_mixin.py:188} INFO - ✅ 03_load_claims.py completed successfully
+[2026-06-24T22:45:44.058+0000] {python.py:237} INFO - Done. Returned value was: None
+[2026-06-24T22:45:44.059+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2026-06-24T22:45:44.073+0000] {taskinstance.py:1205} INFO - Marking task as SUCCESS. dag_id=insurance_pipeline, task_id=load_claims, execution_date=20260624T224020, start_date=20260624T224540, end_date=20260624T224544
+[2026-06-24T22:45:44.137+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 0
+[2026-06-24T22:45:44.175+0000] {taskinstance.py:3482} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-06-24T22:45:44.179+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

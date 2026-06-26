@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 *.png
 venv/
+*.egg-info/
+.pytest_cache/
+PROJECT_DOCUMENTATION.md

@@ -1,0 +1,53 @@
+[2026-06-24T23:03:02.538+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2026-06-24T23:03:02.585+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: insurance_pipeline.load_fact_claims manual__2026-06-24T22:50:48+00:00 [queued]>
+[2026-06-24T23:03:02.598+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: insurance_pipeline.load_fact_claims manual__2026-06-24T22:50:48+00:00 [queued]>
+[2026-06-24T23:03:02.599+0000] {taskinstance.py:2303} INFO - Starting attempt 1 of 2
+[2026-06-24T23:03:02.620+0000] {taskinstance.py:2327} INFO - Executing <Task(PythonOperator): load_fact_claims> on 2026-06-24 22:50:48+00:00
+[2026-06-24T23:03:02.636+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'insurance_pipeline', 'load_fact_claims', 'manual__2026-06-24T22:50:48+00:00', '--job-id', '33', '--raw', '--subdir', 'DAGS_FOLDER/insurance_pipeline_dag.py', '--cfg-path', '/tmp/tmpq586gi2g']
+[2026-06-24T23:03:02.640+0000] {standard_task_runner.py:91} INFO - Job 33: Subtask load_fact_claims
+[2026-06-24T23:03:02.646+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:61 DeprecationWarning: This process (pid=804) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-24T23:03:02.650+0000] {standard_task_runner.py:63} INFO - Started process 807 to run task
+[2026-06-24T23:03:02.737+0000] {task_command.py:426} INFO - Running <TaskInstance: insurance_pipeline.load_fact_claims manual__2026-06-24T22:50:48+00:00 [running]> on host b726b1f95560
+[2026-06-24T23:03:02.869+0000] {taskinstance.py:2644} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='lewis' AIRFLOW_CTX_DAG_ID='insurance_pipeline' AIRFLOW_CTX_TASK_ID='load_fact_claims' AIRFLOW_CTX_EXECUTION_DATE='2026-06-24T22:50:48+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-24T22:50:48+00:00'
+[2026-06-24T23:03:02.870+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2026-06-24T23:03:02.885+0000] {logging_mixin.py:188} INFO - ▶ Running: /opt/***/scripts/09_load_fact_claims.py
+[2026-06-24T23:03:13.838+0000] {logging_mixin.py:188} INFO - STDERR: 2026-06-24 23:03:04 | INFO | =======================================================
+2026-06-24 23:03:04 | INFO | FACT_CLAIMS ETL PIPELINE STARTED
+2026-06-24 23:03:04 | INFO | =======================================================
+2026-06-24 23:03:04 | INFO | EXTRACT — pulling source tables...
+2026-06-24 23:03:05 | INFO |   claims       : 16,111 rows
+2026-06-24 23:03:05 | INFO |   customers    : 8,000 rows
+2026-06-24 23:03:05 | INFO |   policies     : 20,000 rows
+2026-06-24 23:03:05 | INFO |   counties     : 5 rows
+2026-06-24 23:03:05 | INFO |   statuses     : 5 rows
+2026-06-24 23:03:05 | INFO |   policy_types : 4 rows
+2026-06-24 23:03:05 | INFO | VALIDATE — checking source data quality...
+2026-06-24 23:03:05 | INFO |   All source validations passed
+2026-06-24 23:03:05 | INFO | TRANSFORM — building fact_claims structure...
+2026-06-24 23:03:06 | INFO |   Transformed rows : 16,111
+2026-06-24 23:03:06 | INFO |   Null check       : {'claim_id': 0, 'policy_id': 0, 'customer_id': 0, 'date_key': 0, 'incident_date_key': 0, 'status_id': 0, 'county_id': 0, 'policy_type_id': 0, 'claim_type': 0, 'claim_amount': 0, 'approved_amount': 0, 'claim_status': 0, 'incident_date': 0, 'claim_date': 0, 'created_at': 0}
+2026-06-24 23:03:06 | INFO |   Skipped 814 existing claim_ids. New rows: 15,297
+2026-06-24 23:03:06 | INFO | LOAD — inserting 15,297 rows into fact_claims...
+2026-06-24 23:03:13 | INFO |   Load complete
+2026-06-24 23:03:13 | INFO | VERIFY — post-load reconciliation...
+2026-06-24 23:03:13 | INFO |   Source claims  : 16,111
+2026-06-24 23:03:13 | INFO |   Fact claims    : 16,111
+2026-06-24 23:03:13 | INFO |   Missing rows   : 0
+2026-06-24 23:03:13 | INFO |   Null amounts   : 0
+2026-06-24 23:03:13 | INFO | 
+status_name  claims  total_claimed  total_approved
+   Rejected    4080   418838010.31            0.00
+   Approved    4060   416238487.01    270343873.28
+    Pending    4046   416045627.48            0.00
+       Paid    3925   399336328.26    260562232.25
+2026-06-24 23:03:13 | INFO |   PERFECT RECONCILIATION — all checks passed
+2026-06-24 23:03:13 | INFO | =======================================================
+2026-06-24 23:03:13 | INFO | PIPELINE COMPLETE in 8s
+2026-06-24 23:03:13 | INFO | =======================================================
+[2026-06-24T23:03:13.840+0000] {logging_mixin.py:188} INFO - ✅ 09_load_fact_claims.py completed successfully
+[2026-06-24T23:03:13.842+0000] {python.py:237} INFO - Done. Returned value was: None
+[2026-06-24T23:03:13.844+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2026-06-24T23:03:13.872+0000] {taskinstance.py:1205} INFO - Marking task as SUCCESS. dag_id=insurance_pipeline, task_id=load_fact_claims, execution_date=20260624T225048, start_date=20260624T230302, end_date=20260624T230313
+[2026-06-24T23:03:13.950+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 0
+[2026-06-24T23:03:14.010+0000] {taskinstance.py:3482} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2026-06-24T23:03:14.017+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

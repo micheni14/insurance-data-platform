@@ -30,6 +30,28 @@ import numpy as np
 from datetime import datetime
 from sqlalchemy import text
 from config.db import engine
+from config.gcp import upload_to_gcs, GCS_BUCKET
+
+# Create or replace the summary_stats view now that all fact tables exist
+with engine.begin() as conn:
+    conn.execute(text("DROP TABLE IF EXISTS summary_stats CASCADE"))
+    conn.execute(text("DROP VIEW IF EXISTS summary_stats CASCADE"))
+    conn.execute(text("""
+        CREATE OR REPLACE VIEW summary_stats AS
+        SELECT 'Total Customers'       AS metric, COUNT(*)::text AS value FROM customers
+        UNION ALL
+        SELECT 'Total Policies',        COUNT(*)::text            FROM policies
+        UNION ALL
+        SELECT 'Total Claims',          COUNT(*)::text            FROM claims
+        UNION ALL
+        SELECT 'Gross Premium (KES)',   ROUND(SUM(premium_amount), 2)::text
+            FROM fact_sales
+        UNION ALL
+        SELECT 'Total Collected (KES)', ROUND(SUM(payment_amount), 2)::text
+            FROM fact_payments
+            WHERE payment_status = 'Completed'
+    """))
+print("summary_stats view ready")
 
 # -----------------------------
 # STYLE CONFIG
@@ -95,7 +117,7 @@ monthly_premium = pd.read_sql("""
         COUNT(fs.sale_id)                  AS policies
     FROM fact_sales fs
     JOIN dim_date d ON fs.date_key = d.date_key
-    WHERE d.year BETWEEN 2023 AND 2026
+    WHERE d.year BETWEEN EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '3 years') AND EXTRACT(YEAR FROM CURRENT_DATE)
     GROUP BY d.year, d.month, d.month_name
     ORDER BY d.year, d.month
 """, engine)
@@ -207,7 +229,7 @@ collections_vs_premium = pd.read_sql("""
     FROM dim_date d
     LEFT JOIN fact_sales    fs ON fs.date_key = d.date_key
     LEFT JOIN fact_payments fp ON fp.date_key = d.date_key
-    WHERE d.year BETWEEN 2023 AND 2026
+    WHERE d.year BETWEEN EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '3 years') AND EXTRACT(YEAR FROM CURRENT_DATE)
     GROUP BY d.year, d.month, d.month_name
     ORDER BY d.year, d.month
 """, engine)
@@ -644,3 +666,15 @@ for _, row in summary.iterrows():
 print("=" * 55)
 print(f"\nAll charts saved to: {OUTPUT_DIR}/")
 print("Analytics complete.")
+
+# ── Upload reports to Cloud Storage ────────────────────────
+print(f"\nUploading reports to gs://{GCS_BUCKET}/reports/ ...")
+chart_files = [
+    f for f in os.listdir(OUTPUT_DIR)
+    if f.endswith(".png") and os.path.isfile(os.path.join(OUTPUT_DIR, f))
+]
+for fname in sorted(chart_files):
+    local = os.path.join(OUTPUT_DIR, fname)
+    gs_url = upload_to_gcs(local, f"reports/{fname}")
+    print(f"  Uploaded: {gs_url}")
+print(f"All reports uploaded to gs://{GCS_BUCKET}/reports/")

@@ -7,6 +7,7 @@ import pandas as pd
 import uuid
 from datetime import datetime
 from config.db import engine
+from config.gcp import dump_df_to_gcs
 
 fake = Faker()
 
@@ -39,6 +40,7 @@ print(f"New records after dedup: {len(df)}")
 
 print("Loading into Postgres...")
 
+dump_df_to_gcs(df, "customers")
 df.to_sql(
     "customers",
     engine,

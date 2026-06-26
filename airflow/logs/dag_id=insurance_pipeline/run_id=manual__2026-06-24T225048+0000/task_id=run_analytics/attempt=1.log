@@ -1,0 +1,89 @@
+[2026-06-24T23:04:44.636+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2026-06-24T23:04:44.692+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: insurance_pipeline.run_analytics manual__2026-06-24T22:50:48+00:00 [queued]>
+[2026-06-24T23:04:44.707+0000] {taskinstance.py:2073} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: insurance_pipeline.run_analytics manual__2026-06-24T22:50:48+00:00 [queued]>
+[2026-06-24T23:04:44.708+0000] {taskinstance.py:2303} INFO - Starting attempt 1 of 2
+[2026-06-24T23:04:44.725+0000] {taskinstance.py:2327} INFO - Executing <Task(PythonOperator): run_analytics> on 2026-06-24 22:50:48+00:00
+[2026-06-24T23:04:44.741+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'insurance_pipeline', 'run_analytics', 'manual__2026-06-24T22:50:48+00:00', '--job-id', '36', '--raw', '--subdir', 'DAGS_FOLDER/insurance_pipeline_dag.py', '--cfg-path', '/tmp/tmpoa5g37_o']
+[2026-06-24T23:04:44.747+0000] {standard_task_runner.py:91} INFO - Job 36: Subtask run_analytics
+[2026-06-24T23:04:44.751+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:61 DeprecationWarning: This process (pid=869) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-24T23:04:44.752+0000] {standard_task_runner.py:63} INFO - Started process 870 to run task
+[2026-06-24T23:04:44.854+0000] {task_command.py:426} INFO - Running <TaskInstance: insurance_pipeline.run_analytics manual__2026-06-24T22:50:48+00:00 [running]> on host b726b1f95560
+[2026-06-24T23:04:44.986+0000] {taskinstance.py:2644} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='lewis' AIRFLOW_CTX_DAG_ID='insurance_pipeline' AIRFLOW_CTX_TASK_ID='run_analytics' AIRFLOW_CTX_EXECUTION_DATE='2026-06-24T22:50:48+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-24T22:50:48+00:00'
+[2026-06-24T23:04:44.988+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2026-06-24T23:04:45.004+0000] {logging_mixin.py:188} INFO - ▶ Running: /opt/***/scripts/11_analytics.py
+[2026-06-24T23:04:47.810+0000] {logging_mixin.py:188} INFO - STDERR: Traceback (most recent call last):
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1910, in _execute_context
+    self.dialect.do_execute(
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 736, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.WrongObjectType: "summary_stats" is not a view
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/***/scripts/11_analytics.py", line 36, in <module>
+    conn.execute(text("""
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1385, in execute
+    return meth(self, multiparams, params, _EMPTY_EXECUTION_OPTS)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 334, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1577, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1953, in _execute_context
+    self._handle_dbapi_exception(
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2134, in _handle_dbapi_exception
+    util.raise_(
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/util/compat.py", line 211, in raise_
+    raise exception
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1910, in _execute_context
+    self.dialect.do_execute(
+  File "/home/***/.local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 736, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.WrongObjectType) "summary_stats" is not a view
+
+[SQL: 
+        CREATE OR REPLACE VIEW summary_stats AS
+        SELECT 'Total Customers'       AS metric, COUNT(*)::text AS value FROM customers
+        UNION ALL
+        SELECT 'Total Policies',        COUNT(*)::text            FROM policies
+        UNION ALL
+        SELECT 'Total Claims',          COUNT(*)::text            FROM claims
+        UNION ALL
+        SELECT 'Gross Premium (KES)',   ROUND(SUM(premium_amount), 2)::text
+            FROM fact_sales
+        UNION ALL
+        SELECT 'Total Collected (KES)', ROUND(SUM(payment_amount), 2)::text
+            FROM fact_payments
+            WHERE payment_status = 'Completed'
+    ]
+(Background on this error at: https://sqlalche.me/e/14/f405)
+[2026-06-24T23:04:47.811+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2026-06-24T23:04:47.812+0000] {taskinstance.py:2890} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 465, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 432, in _execute_callable
+    return execute_callable(context=context, **execute_callable_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/baseoperator.py", line 400, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/python.py", line 235, in execute
+    return_value = self.execute_callable()
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/python.py", line 252, in execute_callable
+    return self.python_callable(*self.op_args, **self.op_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/insurance_pipeline_dag.py", line 62, in run_script
+    raise Exception(f"❌ {script_name} failed with code {result.returncode}")
+Exception: ❌ 11_analytics.py failed with code 1
+[2026-06-24T23:04:47.835+0000] {taskinstance.py:1205} INFO - Marking task as UP_FOR_RETRY. dag_id=insurance_pipeline, task_id=run_analytics, execution_date=20260624T225048, start_date=20260624T230444, end_date=20260624T230447
+[2026-06-24T23:04:47.852+0000] {standard_task_runner.py:110} ERROR - Failed to execute job 36 for task run_analytics (❌ 11_analytics.py failed with code 1; 870)
+[2026-06-24T23:04:47.906+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 1
+[2026-06-24T23:04:47.935+0000] {taskinstance.py:3482} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2026-06-24T23:04:47.942+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

@@ -1,0 +1,75 @@
+x-airflow-common: &airflow-common
+  build:
+    context: ./airflow
+    dockerfile: Dockerfile
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: 'Y1i9T-4lISfV8E8fx3xMbQCQqIKeEH5V_4_N25FVfrM='
+    AIRFLOW__WEBSERVER__SECRET_KEY: 'Y1i9T-4lISfV8E8fx3xMbQCQqIKeEH5V_4_N25FVfrM='
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    # Your insurance DB credentials — match your .env
+    INSURANCE_DB_HOST: host.docker.internal
+    INSURANCE_DB_PORT: 5432
+    INSURANCE_DB_NAME: insurance_dw
+    INSURANCE_DB_USER: postgres
+    INSURANCE_DB_PASSWORD: ${DB_PASSWORD}
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./scripts:/opt/airflow/scripts
+    - ./config:/opt/airflow/config
+    - ./.env:/opt/airflow/.env
+  depends_on:
+    airflow-postgres:
+      condition: service_healthy
+
+services:
+  # Airflow's own metadata database (separate from your insurance DB)
+  airflow-postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+
+  # Airflow Web UI — visit http://localhost:8080
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 3
+    restart: always
+
+  # Airflow Scheduler — triggers DAG runs
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
+
+  # One-time init — creates DB tables and admin user
+  airflow-init:
+    <<: *airflow-common
+    command:
+      - bash
+      - -c
+      - |
+        airflow db init &&
+        airflow users create --username admin --password admin --firstname Lewis --lastname Micheni --role Admin --email lewis@insurance.com
+    restart: on-failure
+
+volumes:
+  airflow-postgres-data:

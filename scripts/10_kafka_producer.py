@@ -8,7 +8,7 @@ import json
 import time
 import random
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from kafka import KafkaProducer
 from faker import Faker
 
@@ -16,7 +16,7 @@ fake = Faker()
 
 # -- Config ------------------------------------------------------------------
 TOPIC = "insurance-events"
-BROKER = "localhost:9092"
+BROKER = "kafka:9092"
 DELAY_SECONDS = 1  # 1 event per second
 
 POLICY_TYPES   = ["Auto", "Home", "Life", "Health", "Business"]
@@ -43,7 +43,7 @@ def generate_policy_event():
         "premium_amount": round(random.uniform(5000, 80000), 2),
         "county": random.choice(COUNTIES),
         "start_date": fake.date_between(start_date="-1y", end_date="today").isoformat(),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 def generate_claim_event():
@@ -54,7 +54,7 @@ def generate_claim_event():
         "claim_amount": round(random.uniform(10000, 500000), 2),
         "status": random.choice(CLAIM_STATUSES),
         "incident_date": fake.date_between(start_date="-6m", end_date="today").isoformat(),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 def generate_payment_event():
@@ -64,8 +64,8 @@ def generate_payment_event():
         "policy_id": str(uuid.uuid4()),
         "amount_paid": round(random.uniform(1000, 50000), 2),
         "payment_method": random.choice(PAYMENT_METHODS),
-        "payment_date": datetime.utcnow().date().isoformat(),
-        "timestamp": datetime.utcnow().isoformat(),
+        "payment_date": datetime.now(timezone.utc).date().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 GENERATORS = {

@@ -1,35 +1,17 @@
+import sys
 import os
-import uuid
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import random
 import pandas as pd
 from datetime import datetime, timedelta, date
-from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
-from urllib.parse import quote_plus
-from faker import Faker
+from sqlalchemy import text
+from config.db import engine
 
-# -----------------------------
-# 0. SETUP
-# -----------------------------
-load_dotenv()
-fake = Faker()
-
-print("Starting star schema ingestion pipeline...")
-
-engine = create_engine(
-    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{quote_plus(os.getenv('DB_PASSWORD'))}"
-    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
-    pool_pre_ping=True
-)
-
-with engine.connect() as conn:
-    conn.execute(text("SELECT 1"))
-print("Connected to PostgreSQL\n")
-
+print("Starting star schema dimension pipeline...\n")
 
 # ============================================================
 # DIMENSION 1: dim_date
-# Populate every date from 2019-01-01 to 2030-12-31
 # ============================================================
 print("Populating dim_date...")
 
@@ -47,7 +29,7 @@ while current <= end:
         "quarter":        (current.month - 1) // 3 + 1,
         "quarter_name":   f"Q{(current.month - 1) // 3 + 1} {current.year}",
         "year":           current.year,
-        "day_of_week":    current.isoweekday(),        # 1=Mon, 7=Sun
+        "day_of_week":    current.isoweekday(),
         "day_name":       current.strftime("%A"),
         "is_weekend":     current.isoweekday() >= 6,
         "is_month_start": current.day == 1,
@@ -58,23 +40,97 @@ while current <= end:
 
 df_date = pd.DataFrame(dates)
 
-# Upsert — skip existing dates
 try:
-    existing = pd.read_sql("SELECT date_key FROM dim_date", engine)
-    df_date  = df_date[~df_date["date_key"].isin(existing["date_key"])]
-except Exception as e:
-    print(f"WARNING: Could not read existing dim_date records: {e}")
+    existing_dates = pd.read_sql("SELECT date_key FROM dim_date", engine)
+except Exception:
+    existing_dates = pd.DataFrame()
+if not existing_dates.empty:
+    df_date = df_date[~df_date["date_key"].isin(existing_dates["date_key"])]
 
-if len(df_date) > 0:
-    df_date.to_sql("dim_date", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"dim_date loaded: {len(df_date)} rows")
+if not df_date.empty:
+    df_date.to_sql("dim_date", engine, if_exists="append", index=False, chunksize=100, method="multi")
+    print(f"  dim_date loaded: {len(df_date)} rows")
 else:
-    print("dim_date already populated")
+    print("  dim_date already populated")
 
 
 # ============================================================
-# DIMENSION 2: dim_customer
-# Copy & enrich from existing customers table
+# DIMENSION 2: dim_policy_type
+# ============================================================
+print("\nPopulating dim_policy_type...")
+
+with engine.begin() as conn:
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS dim_policy_type (
+            policy_type_id SERIAL PRIMARY KEY,
+            policy_type    VARCHAR(50) UNIQUE NOT NULL
+        )
+    """))
+
+existing_types = pd.read_sql("SELECT policy_type FROM dim_policy_type", engine)
+source_types = pd.read_sql("SELECT DISTINCT policy_type FROM policies", engine)
+new_types = source_types[~source_types["policy_type"].isin(existing_types["policy_type"])]
+
+if not new_types.empty:
+    new_types.to_sql("dim_policy_type", engine, if_exists="append", index=False, method="multi")
+    print(f"  dim_policy_type loaded: {len(new_types)} rows")
+else:
+    print("  dim_policy_type already populated")
+
+
+# ============================================================
+# DIMENSION 3: dim_county
+# ============================================================
+print("\nPopulating dim_county...")
+
+with engine.begin() as conn:
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS dim_county (
+            county_id   SERIAL PRIMARY KEY,
+            county_name VARCHAR(100) UNIQUE NOT NULL
+        )
+    """))
+
+existing_counties = pd.read_sql("SELECT county_name FROM dim_county", engine)
+source_counties = pd.read_sql("SELECT DISTINCT county FROM customers", engine)
+new_counties = source_counties[~source_counties["county"].isin(existing_counties["county_name"])]
+new_counties = new_counties.rename(columns={"county": "county_name"})
+
+if not new_counties.empty:
+    new_counties.to_sql("dim_county", engine, if_exists="append", index=False, method="multi")
+    print(f"  dim_county loaded: {len(new_counties)} rows")
+else:
+    print("  dim_county already populated")
+
+
+# ============================================================
+# DIMENSION 4: dim_claim_status
+# ============================================================
+print("\nPopulating dim_claim_status...")
+
+with engine.begin() as conn:
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS dim_claim_status (
+            status_id   SERIAL PRIMARY KEY,
+            status_name VARCHAR(50) UNIQUE NOT NULL
+        )
+    """))
+
+existing_statuses = pd.read_sql("SELECT status_name FROM dim_claim_status", engine)
+default_statuses = pd.DataFrame({
+    "status_name": ["Pending", "Approved", "Rejected", "Paid", "Escalated"]
+})
+new_statuses = default_statuses[~default_statuses["status_name"].isin(existing_statuses["status_name"])]
+
+if not new_statuses.empty:
+    new_statuses.to_sql("dim_claim_status", engine, if_exists="append", index=False, method="multi")
+    print(f"  dim_claim_status loaded: {len(new_statuses)} rows")
+else:
+    print("  dim_claim_status already populated")
+
+
+# ============================================================
+# DIMENSION 5: dim_customer
 # ============================================================
 print("\nPopulating dim_customer...")
 
@@ -115,224 +171,89 @@ dim_customer = customers[[
     "customer_tenure", "ingested_at"
 ]]
 
-# Upsert
 try:
-    existing = pd.read_sql("SELECT customer_id FROM dim_customer", engine)
-    dim_customer = dim_customer[~dim_customer["customer_id"].astype(str).isin(existing["customer_id"].astype(str))]
-except Exception as e:
-    print(f"WARNING: Could not read existing dim_customer records: {e}")
-
-if len(dim_customer) > 0:
-    dim_customer.to_sql("dim_customer", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"dim_customer loaded: {len(dim_customer)} rows")
+    existing_customers = pd.read_sql("SELECT customer_id FROM dim_customer", engine)
+except Exception:
+    existing_customers = pd.DataFrame()
+if not existing_customers.empty:
+    dim_customer = dim_customer[~dim_customer["customer_id"].astype(str).isin(existing_customers["customer_id"].astype(str))]
+if not dim_customer.empty:
+    dim_customer.to_sql("dim_customer", engine, if_exists="append", index=False, chunksize=100, method="multi")
+    print(f"  dim_customer loaded: {len(dim_customer)} rows")
 else:
-    print("dim_customer already populated")
+    print("  dim_customer already populated")
 
 
 # ============================================================
-# DIMENSION 3: dim_agent
-# Generate 20 fake agents
+# DIMENSION 6: dim_agent (populated from agents table)
 # ============================================================
 print("\nPopulating dim_agent...")
 
-try:
-    existing_agents = pd.read_sql("SELECT COUNT(*) as cnt FROM dim_agent", engine)
-    if existing_agents["cnt"].iloc[0] > 0:
-        print("dim_agent already populated")
-        agents_df = pd.read_sql("SELECT agent_id FROM dim_agent", engine)
-    else:
-        raise RuntimeError("dim_agent table is empty — seeding now")
-except Exception as e:
-    channels = ["Direct", "Broker", "Online", "Bancassurance"]
-    regions  = ["Nairobi Metro", "Central", "Coast", "Rift Valley", "Nyanza"]
-
-    agents = []
-    for i in range(1, 21):
-        agents.append({
-            "agent_id":   str(uuid.uuid4()),
-            "agent_name": fake.name(),
-            "agent_code": f"AGT{str(i).zfill(4)}",
-            "region":     random.choice(regions),
-            "channel":    random.choice(channels),
-            "hire_date":  fake.date_between(start_date="-8y", end_date="-1y"),
-            "is_active":  random.choice([True, True, True, False])  # 75% active
-        })
-
-    agents_df = pd.DataFrame(agents)
-    agents_df.to_sql("dim_agent", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"dim_agent loaded: {len(agents_df)} rows")
-
-
-# ============================================================
-# FACT TABLE 1: fact_sales
-# One row per policy — links to all dimensions
-# ============================================================
-print("\nPopulating fact_sales...")
-
-policies     = pd.read_sql("SELECT * FROM policies", engine)
-policy_types = pd.read_sql("SELECT policy_type_id, policy_type FROM dim_policy_type", engine)
-counties     = pd.read_sql("SELECT county_id, county_name FROM dim_county", engine)
-agents_list  = pd.read_sql("SELECT agent_id FROM dim_agent WHERE is_active = TRUE", engine)
-
-policy_type_map = dict(zip(policy_types["policy_type"], policy_types["policy_type_id"]))
-county_map      = dict(zip(counties["county_name"], counties["county_id"]))
-
-# Join customers to get county
-customers_county = pd.read_sql("SELECT customer_id, county FROM customers", engine)
-policies = policies.merge(customers_county, on="customer_id", how="left")
-
-fact_sales_rows = []
-for _, row in policies.iterrows():
-    sale_date = row["start_date"]
-
-    # Make sure sale_date exists in dim_date
-    if pd.isna(sale_date):
-        continue
-
-    fact_sales_rows.append({
-        "sale_id":        str(uuid.uuid4()),
-        "policy_id":      str(row["policy_id"]),
-        "customer_id":    str(row["customer_id"]),
-        "agent_id":       str(random.choice(agents_list["agent_id"].tolist())),
-        "date_key":       sale_date,
-        "policy_type_id": policy_type_map.get(row["policy_type"]),
-        "county_id":      county_map.get(row.get("county")),
-        "premium_amount": float(row["premium"]),
-        "commission_rate": round(random.uniform(0.05, 0.15), 4),
-        "policy_type":    row["policy_type"],
-        "start_date":     row["start_date"],
-        "end_date":       row["end_date"],
-        "policy_status":  row["status"],
-    })
-
-df_sales = pd.DataFrame(fact_sales_rows)
-
-# Upsert
-try:
-    existing = pd.read_sql("SELECT sale_id FROM fact_sales", engine)
-    df_sales = df_sales[~df_sales["sale_id"].isin(existing["sale_id"])]
-except Exception as e:
-    print(f"WARNING: Could not read existing fact_sales records: {e}")
-
-if len(df_sales) > 0:
-    df_sales.to_sql("fact_sales", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"fact_sales loaded: {len(df_sales)} rows")
-else:
-    print("fact_sales already populated")
-
-
-# ============================================================
-# FACT TABLE 2: fact_claims
-# Generate 1-2 claims per policy (not all policies have claims)
-# ============================================================
-print("\nPopulating fact_claims...")
-
-claim_types   = ["Medical", "Accident", "Death", "Disability", "Property Damage"]
-claim_statuses = pd.read_sql("SELECT status_id, status_name FROM dim_claim_status", engine)
-status_map    = dict(zip(claim_statuses["status_name"], claim_statuses["status_id"]))
-
-claims = []
-for _, row in policies.iterrows():
-    # Only ~60% of policies have claims
-    if random.random() > 0.6:
-        continue
-
-    num_claims = random.randint(1, 2)
-    for _ in range(num_claims):
-        # Claim happens between start_date and today
-        start = pd.to_datetime(row["start_date"]).date()
-        today = datetime.today().date()
-        if start >= today:
-            continue
-
-        incident_date = fake.date_between(start_date=start, end_date=today)
-        claim_date    = incident_date + timedelta(days=random.randint(1, 30))
-        claim_amount  = round(random.uniform(5000, float(row["premium"]) * 3), 2)
-        status_name   = random.choices(
-            ["Pending", "Approved", "Rejected", "Paid", "Escalated"],
-            weights=[20, 35, 15, 25, 5]
-        )[0]
-        approved = round(claim_amount * random.uniform(0.5, 1.0), 2) if status_name in ["Approved", "Paid"] else 0
-
-        claims.append({
-            "claim_id":          str(uuid.uuid4()),
-            "policy_id":         str(row["policy_id"]),
-            "customer_id":       str(row["customer_id"]),
-            "date_key":          claim_date,
-            "incident_date_key": incident_date,
-            "status_id":         status_map.get(status_name),
-            "county_id":         county_map.get(row.get("county")),
-            "policy_type_id":    policy_type_map.get(row["policy_type"]),
-            "claim_amount":      claim_amount,
-            "approved_amount":   approved,
-            "claim_type":        random.choice(claim_types),
-            "claim_status":      status_name,
-            "incident_date":     incident_date,
-            "claim_date":        claim_date,
-        })
-
-df_claims = pd.DataFrame(claims)
-
-# Upsert
-try:
-    existing = pd.read_sql("SELECT claim_id FROM fact_claims", engine)
-    df_claims = df_claims[~df_claims["claim_id"].isin(existing["claim_id"])]
-except Exception as e:
-    print(f"WARNING: Could not read existing fact_claims records: {e}")
-
-if len(df_claims) > 0:
-    df_claims.to_sql("fact_claims", engine, if_exists="append", index=False, chunksize=100, method=None)
-    print(f"fact_claims loaded: {len(df_claims)} rows")
-else:
-    print("fact_claims already populated")
-
-
-# ============================================================
-# VIEW: summary_stats
-# Used by 11_analytics.py — SELECT * FROM summary_stats
-# ============================================================
-print("\nCreating summary_stats view...")
-
-with engine.connect() as conn:
+with engine.begin() as conn:
     conn.execute(text("""
-        CREATE OR REPLACE VIEW summary_stats AS
-        SELECT 'Total Customers'       AS metric, COUNT(*)::text AS value FROM customers
-        UNION ALL
-        SELECT 'Total Policies',        COUNT(*)::text            FROM policies
-        UNION ALL
-        SELECT 'Total Claims',          COUNT(*)::text            FROM claims
-        UNION ALL
-        SELECT 'Gross Premium (KES)',   ROUND(SUM(premium_amount), 2)::text
-            FROM fact_sales
-        UNION ALL
-        SELECT 'Total Collected (KES)', ROUND(SUM(payment_amount), 2)::text
-            FROM fact_payments
-            WHERE payment_status = 'Completed'
+        CREATE TABLE IF NOT EXISTS dim_agent (
+            agent_id   VARCHAR(36) PRIMARY KEY,
+            agent_name VARCHAR(100),
+            agent_code VARCHAR(20),
+            region     VARCHAR(50),
+            channel    VARCHAR(50),
+            hire_date  DATE,
+            is_active  BOOLEAN DEFAULT TRUE
+        )
     """))
-    conn.commit()
 
-print("summary_stats view created")
+regions_map = {
+    "Nairobi": "Nairobi Metro",
+    "Kiambu":  "Central",
+    "Mombasa": "Coast",
+    "Nakuru":  "Rift Valley",
+    "Kisumu":  "Nyanza"
+}
+channels = ["Direct", "Broker", "Online", "Bancassurance"]
+
+source_agents = pd.read_sql("SELECT * FROM agents", engine)
+
+try:
+    existing_agents = pd.read_sql("SELECT agent_id FROM dim_agent", engine)
+except Exception:
+    existing_agents = pd.DataFrame()
+if not existing_agents.empty and "agent_id" in existing_agents.columns:
+    source_agents = source_agents[~source_agents["agent_id"].isin(existing_agents["agent_id"])]
+
+if not source_agents.empty:
+    dim_agent = pd.DataFrame({
+        "agent_id":   source_agents["agent_id"],
+        "agent_name": source_agents["full_name"],
+        "agent_code": source_agents["agent_id"].astype(str).apply(lambda x: x[:8].upper()),
+        "region":     source_agents["county"].map(regions_map).fillna("Other"),
+        "channel":    [random.choice(channels) for _ in range(len(source_agents))],
+        "hire_date":  pd.to_datetime(source_agents["hire_date"]).dt.date,
+        "is_active":  source_agents["status"] == "Active"
+    })
+    dim_agent.to_sql("dim_agent", engine, if_exists="append", index=False, method="multi")
+    print(f"  dim_agent loaded: {len(dim_agent)} rows")
+else:
+    print("  dim_agent already populated")
 
 
 # ============================================================
-# VERIFICATION — Full schema summary
+# VERIFICATION
 # ============================================================
 print("\n" + "="*55)
-print("STAR SCHEMA — FINAL VERIFICATION")
+print("STAR SCHEMA DIMENSIONS — FINAL VERIFICATION")
 print("="*55)
 
 tables = [
     "dim_date", "dim_customer", "dim_policy_type",
-    "dim_county", "dim_agent", "dim_claim_status",
-    "fact_sales", "fact_claims"
+    "dim_county", "dim_agent", "dim_claim_status"
 ]
 
-with engine.connect() as conn:
+with engine.begin() as conn:
     for table in tables:
-        count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
-        tag   = "DIM " if table.startswith("dim") else "FACT"
-        print(f"  {tag}  {table:<25} {count:>6} rows")
+        result = conn.execute(text(f"SELECT COUNT(*) FROM {table}"))
+        count = result.scalar()
+        print(f"  DIM  {table:<25} {count:>6} rows")
 
 print("="*55)
-print("\nStar schema fully loaded and verified.")
-print("Ready for analytics.")
+print("\nDimensions fully loaded and verified.")
+print("Ready for fact table ETL.")

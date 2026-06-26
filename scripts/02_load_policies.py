@@ -7,6 +7,7 @@ import random
 from datetime import datetime, timedelta
 import uuid
 from config.db import engine
+from config.gcp import dump_df_to_gcs
 
 print("Connected to database")
 
@@ -43,6 +44,7 @@ df = pd.DataFrame(policies)
 
 print(f"Policies to insert: {len(df)}")
 
+dump_df_to_gcs(df, "policies")
 df.to_sql(
     "policies",
     engine,
